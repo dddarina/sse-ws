@@ -3,7 +3,6 @@ name: Deploy Frontend to GitHub Pages
 on:
   push:
     branches: [ main ]
-    # Запускать только при изменениях во frontend или в самом workflow
     paths:
       - 'frontend/**'
       - '.github/workflows/deploy.yml'
@@ -35,5 +34,5 @@ jobs:
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: frontend/dist  
+        deploy_key: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        publish_dir: frontend/dist
