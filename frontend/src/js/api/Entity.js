@@ -1,5 +1,5 @@
 export default class Entity {
-  constructor(baseURL = 'http://localhost:3000') {
+  constructor(baseURL = 'https://sse-nq1x22rx8-dddarinas-projects.vercel.app') {
     this.baseURL = baseURL;
   }
 

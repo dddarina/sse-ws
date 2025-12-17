@@ -24,11 +24,11 @@ export default class Chat {
   init() {
     this.bindToDOM();
     this.registerEvents();
-    
+
     this.checkAndCleanStuckUsers().then(() => {
       this.showAuthModal();
     });
-    
+
     window.addEventListener('beforeunload', () => {
       this.exitOnUnload();
     });
@@ -134,7 +134,7 @@ export default class Chat {
     `;
 
     this.container.append(this.authModal, this.chatContainer, this.confirmModal);
-    
+
     const notificationsContainer = this.chatContainer.querySelector('.notifications-container');
     this.notificationManager = new NotificationManager(notificationsContainer);
   }
@@ -191,10 +191,10 @@ export default class Chat {
   }
 
   startHeartbeat() {
-    this.stopHeartbeat(); 
-    
+    this.stopHeartbeat();
+
     console.log('Heartbeat запущен');
-    
+
     this.heartbeatInterval = setInterval(() => {
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         try {
@@ -204,8 +204,8 @@ export default class Chat {
           console.error('Ошибка отправки ping:', error);
         }
       }
-    }, 15000); 
-    
+    }, 15000);
+
     this.lastPongTime = Date.now();
   }
 
@@ -214,12 +214,12 @@ export default class Chat {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
     }
-    
+
     if (this.heartbeatTimeout) {
       clearTimeout(this.heartbeatTimeout);
       this.heartbeatTimeout = null;
     }
-    
+
     console.log('Heartbeat остановлен');
   }
 
@@ -234,7 +234,7 @@ export default class Chat {
 
   reconnectIfNeeded() {
     if (!this.currentUser || this.isExiting) return;
-    
+
     if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
       console.log('Проверка: соединение не активно, пытаемся переподключиться...');
       this.connectWebSocket();
@@ -244,17 +244,17 @@ export default class Chat {
   async checkAndCleanStuckUsers() {
     const lastUsername = localStorage.getItem('last_chat_username');
     const lastSessionTime = localStorage.getItem('last_chat_session_time');
-    
+
     if (lastUsername && lastSessionTime) {
       const timePassed = Date.now() - parseInt(lastSessionTime);
       const FIVE_MINUTES = 5 * 60 * 1000;
-      
+
       if (timePassed > FIVE_MINUTES) {
         console.log(`Обнаружен "зависший" пользователь "${lastUsername}", удаляем...`);
         await this.removeStuckUser(lastUsername);
       }
     }
-    
+
     localStorage.setItem('last_chat_session_time', Date.now().toString());
   }
 
@@ -267,11 +267,11 @@ export default class Chat {
         },
         body: JSON.stringify({ name: username })
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (data.status === 'ok') {
         console.log(`Пользователь "${username}" успешно удален с сервера`);
@@ -295,9 +295,9 @@ export default class Chat {
       this.autoReconnect = true;
       this.reconnectionAttempts = 0;
       this.showNotification('Подключено к чату', 'success');
-      
+
       this.startHeartbeat();
-      
+
       if (this.currentUser) {
         const joinMessage = {
           type: 'join',
@@ -305,9 +305,9 @@ export default class Chat {
         };
         this.websocket.send(JSON.stringify(joinMessage));
       }
-      
+
       this.updateUserInfo();
-      
+
       if (this.websocket.readyState === WebSocket.OPEN) {
         this.websocket.send(JSON.stringify({ type: 'get_users' }));
       }
@@ -317,13 +317,13 @@ export default class Chat {
       try {
         const data = JSON.parse(event.data);
         console.log('Получено от сервера:', data);
-        
+
         if (data.type === 'pong') {
           this.lastPongTime = Date.now();
           console.log('Получен pong от сервера');
           return;
         }
-        
+
         if (Array.isArray(data)) {
           this.updateUsersList(data);
         } else if (data && typeof data === 'object') {
@@ -367,17 +367,17 @@ export default class Chat {
 
     this.websocket.onclose = (event) => {
       console.log('WebSocket connection closed:', event.code, event.reason);
-      
+
       this.stopHeartbeat();
-      
+
       if (this.autoReconnect && !this.isExiting) {
         this.reconnectionAttempts++;
-        
+
         if (this.reconnectionAttempts <= this.maxReconnectionAttempts) {
           const delay = Math.min(2000 * this.reconnectionAttempts, 10000);
           this.updateConnectionStatus('reconnecting', `Переподключение... (${this.reconnectionAttempts}/${this.maxReconnectionAttempts})`);
-          this.showNotification(`Переподключение через ${delay/1000} сек...`, 'warning');
-          
+          this.showNotification(`Переподключение через ${delay / 1000} сек...`, 'warning');
+
           setTimeout(() => {
             if (this.currentUser && !this.isExiting) {
               console.log(`Attempting to reconnect (${this.reconnectionAttempts}/${this.maxReconnectionAttempts})...`);
@@ -392,7 +392,7 @@ export default class Chat {
       } else {
         this.updateConnectionStatus('disconnected', 'Соединение закрыто');
         this.disableMessageInput();
-        
+
         if (!this.isExiting) {
           this.showNotification('Соединение с сервером потеряно', 'error');
         }
@@ -402,12 +402,12 @@ export default class Chat {
 
   async onEnterChatHandler(e) {
     if (this.isConnecting) return;
-    
+
     const input = this.authModal.querySelector('.auth-input');
     const button = this.authModal.querySelector('.auth-button');
-    
+
     const nickname = input.value.trim();
-    
+
     if (!nickname) {
       this.showError('Пожалуйста, введите никнейм');
       return;
@@ -426,9 +426,9 @@ export default class Chat {
     try {
       localStorage.setItem('last_chat_username', nickname);
       localStorage.setItem('last_chat_session_time', Date.now().toString());
-      
+
       const response = await this.api.create({ name: nickname });
-      
+
       if (response.status === 'ok') {
         this.currentUser = response.user;
         this.hideAuthModal();
@@ -439,21 +439,21 @@ export default class Chat {
         this.showError(response.message || 'Ошибка регистрации');
       }
     } catch (error) {
-      if (error.message && error.message.includes('This name is already taken!') || 
-          error.message && error.message.includes('409')) {
-        
+      if (error.message && error.message.includes('This name is already taken!') ||
+        error.message && error.message.includes('409')) {
+
         this.showError('Этот никнейм уже занят. Выберите другой.');
-        
+
         if (confirm(`Никнейм "${nickname}" уже занят. Попробовать освободить его?`)) {
           const autoCleanup = await this.autoCleanupAndRetry(nickname);
-          
+
           if (!autoCleanup) {
             this.showNotification('Не удалось освободить никнейм. Выберите другой.', 'error');
           }
         } else {
           this.showNotification('Пожалуйста, выберите другой никнейм', 'info');
         }
-        
+
       } else {
         this.showError('Не удалось подключиться к серверу. Проверьте соединение.');
         this.showNotification('Не удалось подключиться к серверу. Проверьте соединение.', 'error');
@@ -469,19 +469,19 @@ export default class Chat {
 
   async autoCleanupAndRetry(nickname) {
     console.log(`Пытаемся автоматически очистить никнейм "${nickname}"...`);
-    
+
     this.showNotification(`Освобождаем никнейм "${nickname}"...`, 'info');
-    
+
     try {
       const removed = await this.removeStuckUser(nickname);
-      
+
       if (removed) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         this.showNotification('Никнейм освобожден. Пробуем войти...', 'info');
-        
+
         const retryResponse = await this.api.create({ name: nickname });
-        
+
         if (retryResponse.status === 'ok') {
           this.currentUser = retryResponse.user;
           this.hideAuthModal();
@@ -494,7 +494,7 @@ export default class Chat {
     } catch (retryError) {
       console.error('Auto-cleanup retry error:', retryError);
     }
-    
+
     return false;
   }
 
@@ -507,15 +507,15 @@ export default class Chat {
 
   showError(message) {
     const errorElement = this.authModal.querySelector('.error-message');
-    
+
     if (this.errorTimer) {
       clearTimeout(this.errorTimer);
       this.errorTimer = null;
     }
-    
+
     errorElement.textContent = message;
     errorElement.style.display = 'flex';
-    
+
     this.errorTimer = setTimeout(() => {
       this.hideError();
     }, 5000);
@@ -526,7 +526,7 @@ export default class Chat {
     if (errorElement) {
       errorElement.style.display = 'none';
       errorElement.textContent = '';
-      
+
       if (this.errorTimer) {
         clearTimeout(this.errorTimer);
         this.errorTimer = null;
@@ -562,7 +562,7 @@ export default class Chat {
 
   connectWebSocket() {
     this.stopHeartbeat();
-    
+
     if (this.websocket) {
       if (this.websocket.readyState !== WebSocket.CLOSED) {
         this.websocket.close();
@@ -571,11 +571,11 @@ export default class Chat {
     }
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//localhost:3000`;
-    
+    const wsUrl = 'wss://sse-nq1x22rx8-dddarinas-projects.vercel.app';
+
     console.log(`Подключение к WebSocket: ${wsUrl}`);
     this.websocket = new WebSocket(wsUrl);
-    
+
     this.updateConnectionStatus('connecting', 'Подключение к серверу...');
     this.subscribeOnEvents();
   }
@@ -583,7 +583,7 @@ export default class Chat {
   updateConnectionStatus(status, text) {
     const statusElement = this.chatContainer.querySelector('.connection-status');
     const statusText = this.chatContainer.querySelector('.status-text');
-    
+
     if (statusElement) {
       if (status === 'connected') {
         setTimeout(() => {
@@ -592,9 +592,9 @@ export default class Chat {
       } else {
         statusElement.classList.remove('hidden');
       }
-      
+
       statusText.textContent = text;
-      
+
       statusElement.setAttribute('data-status', status);
     }
   }
@@ -616,25 +616,25 @@ export default class Chat {
     this.users = users;
     const usersList = this.chatContainer.querySelector('.users-list');
     const usersCount = this.chatContainer.querySelector('.users-count');
-    
+
     usersList.innerHTML = '';
     usersCount.textContent = users.length;
-    
+
     if (users.length === 0) {
       usersList.innerHTML = '<li class="no-users">Пока никого нет</li>';
       return;
     }
-    
+
     const sortedUsers = [...users].sort((a, b) => {
       if (this.currentUser && a.id === this.currentUser.id) return -1;
       if (this.currentUser && b.id === this.currentUser.id) return 1;
       return a.name.localeCompare(b.name);
     });
-    
+
     sortedUsers.forEach(user => {
       const li = document.createElement('li');
       li.className = 'chat__user';
-      
+
       if (this.currentUser && user.id === this.currentUser.id) {
         li.classList.add('current-user');
         li.innerHTML = `
@@ -648,16 +648,16 @@ export default class Chat {
           <span class="user-name">${this.escapeHtml(user.name)}</span>
         `;
       }
-      
+
       usersList.append(li);
     });
   }
 
   sendMessage() {
     if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket is not connected. State:', 
+      console.error('WebSocket is not connected. State:',
         this.websocket ? this.websocket.readyState : 'no websocket');
-      
+
       this.showSystemMessage('Нет соединения с сервером');
       this.showNotification('Нет соединения с сервером', 'error');
       this.updateConnectionStatus('error', 'Нет соединения');
@@ -692,7 +692,7 @@ export default class Chat {
 
   renderMessage(data) {
     console.log('Rendering message:', data);
-    
+
     const welcomeMessage = this.chatContainer.querySelector('.welcome-message');
     if (welcomeMessage) {
       welcomeMessage.style.display = 'none';
@@ -705,10 +705,10 @@ export default class Chat {
 
     const messagesList = this.chatContainer.querySelector('.messages-list');
     const messageContainer = document.createElement('div');
-    
+
     const isOwnMessage = this.currentUser && data.user.id === this.currentUser.id;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
+
     if (isOwnMessage) {
       messageContainer.className = 'message__container message__container-yourself';
       messageContainer.innerHTML = `
@@ -722,9 +722,9 @@ export default class Chat {
         <div class="message__body">${this.escapeHtml(data.message)}</div>
       `;
     }
-    
+
     messagesList.append(messageContainer);
-    
+
     const messagesContainer = this.chatContainer.querySelector('.chat__messages-container');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
@@ -739,7 +739,7 @@ export default class Chat {
       <div class="message__body system-message">${text}</div>
     `;
     messagesList.append(messageContainer);
-    
+
     const messagesContainer = this.chatContainer.querySelector('.chat__messages-container');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
@@ -768,7 +768,7 @@ export default class Chat {
         console.error('Error sending exit message on unload:', error);
       }
     }
-    
+
     if (this.currentUser) {
       localStorage.setItem('last_chat_session_time', Date.now().toString());
     }
@@ -778,9 +778,9 @@ export default class Chat {
     this.hideExitConfirmation();
     this.isExiting = true;
     this.autoReconnect = false;
-    
+
     this.stopHeartbeat();
-    
+
     if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
       const exitMessage = {
         type: 'exit',
@@ -793,7 +793,7 @@ export default class Chat {
       }
       this.websocket.close();
     }
-    
+
     this.showNotification('Вы вышли из чата', 'info');
     this.resetChat();
     setTimeout(() => {
@@ -805,40 +805,40 @@ export default class Chat {
     if (this.notificationManager) {
       this.notificationManager.clearAll();
     }
-    
+
     this.currentUser = null;
     this.users = [];
-    
+
     this.stopHeartbeat();
-    
+
     if (this.websocket) {
       if (this.websocket.readyState !== WebSocket.CLOSED) {
         this.websocket.close();
       }
       this.websocket = null;
     }
-    
+
     this.isExiting = false;
     this.autoReconnect = true;
     this.reconnectionAttempts = 0;
     this.chatContainer.classList.add('hidden');
     this.messageHistory = [];
-    
+
     this.chatContainer.querySelector('.messages-list').innerHTML = '';
     this.chatContainer.querySelector('.users-list').innerHTML = '<li class="no-users">Пока никого нет</li>';
     this.chatContainer.querySelector('.users-count').textContent = '0';
-    
+
     const welcomeMessage = this.chatContainer.querySelector('.welcome-message');
     if (welcomeMessage) {
       welcomeMessage.style.display = 'block';
     }
-    
+
     this.messageInput.value = '';
     this.messageInput.disabled = true;
     this.messageInput.placeholder = 'Введите сообщение...';
     this.messageInput.style.height = 'auto';
     this.chatContainer.querySelector('.send-button').disabled = true;
-    
+
     if (this.errorTimer) {
       clearTimeout(this.errorTimer);
       this.errorTimer = null;
