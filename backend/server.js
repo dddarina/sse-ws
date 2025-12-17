@@ -14,7 +14,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 const userState = [];
-const activeConnections = new Map(); // userId -> WebSocket
+const activeConnections = new Map(); 
 
 app.post("/new-user", async (request, response) => {
   if (!request.body || !request.body.name) {
@@ -26,10 +26,8 @@ app.post("/new-user", async (request, response) => {
 
   const { name } = request.body;
 
-  // Проверяем, есть ли уже пользователь с таким именем
   const isExist = userState.find((user) => user.name === name);
   if (isExist) {
-    // Проверяем, активен ли этот пользователь
     const userWs = activeConnections.get(isExist.id);
     if (userWs && userWs.readyState === WebSocket.OPEN) {
       return response.status(409).json({
@@ -37,7 +35,6 @@ app.post("/new-user", async (request, response) => {
         message: "This name is already taken by an active user!"
       });
     } else {
-      // Пользователь неактивен - удаляем и позволяем занять ник
       const idx = userState.findIndex(user => user.id === isExist.id);
       if (idx !== -1) {
         userState.splice(idx, 1);
@@ -81,7 +78,6 @@ app.post("/force-remove-user", (req, res) => {
 const server = http.createServer(app);
 const wsServer = new WebSocketServer({ server });
 
-// Функция для рассылки списка пользователей
 const broadcastUserList = () => {
   const userList = userState.map(user => ({
     id: user.id,
@@ -97,7 +93,6 @@ const broadcastUserList = () => {
   });
 };
 
-// Heartbeat для поддержания соединения
 const setupHeartbeat = (ws) => {
   ws.isAlive = true;
   ws.on('pong', () => {
@@ -105,11 +100,9 @@ const setupHeartbeat = (ws) => {
   });
 };
 
-// Проверка активности соединений
 setInterval(() => {
   wsServer.clients.forEach(ws => {
     if (ws.isAlive === false) {
-      // Соединение мертво
       if (ws.userId) {
         const user = userState.find(u => u.id === ws.userId);
         if (user) {
@@ -126,9 +119,8 @@ setInterval(() => {
     ws.ping();
   });
 
-  // Рассылаем обновленный список
   broadcastUserList();
-}, 30000); // Проверка каждые 30 секунд
+}, 30000); 
 
 wsServer.on("connection", (ws, req) => {
   setupHeartbeat(ws);
@@ -137,18 +129,16 @@ wsServer.on("connection", (ws, req) => {
     try {
       const receivedMSG = JSON.parse(msg);
       logger.info(`Message received: ${JSON.stringify(receivedMSG)}`);
-      
+
       if (receivedMSG.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
         return;
       }
-      // Сохраняем данные пользователя при первом сообщении
       if (receivedMSG.user && receivedMSG.user.id) {
         ws.userId = receivedMSG.user.id;
         ws.userName = receivedMSG.user.name;
         activeConnections.set(receivedMSG.user.id, ws);
 
-        // Убедимся, что пользователь в списке
         const userExists = userState.find(u => u.id === receivedMSG.user.id);
         if (!userExists) {
           userState.push({
@@ -159,7 +149,6 @@ wsServer.on("connection", (ws, req) => {
         }
       }
 
-      // обработка выхода пользователя
       if (receivedMSG.type === "exit") {
         const idx = userState.findIndex(
           (user) => user.id === receivedMSG.user.id
@@ -173,7 +162,6 @@ wsServer.on("connection", (ws, req) => {
         return;
       }
 
-      // обработка отправки сообщения
       if (receivedMSG.type === "send") {
         wsServer.clients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
@@ -183,7 +171,6 @@ wsServer.on("connection", (ws, req) => {
         logger.info("Message sent to all users");
       }
 
-      // запрос списка пользователей
       if (receivedMSG.type === "get_users") {
         ws.send(JSON.stringify(
           userState.map(user => ({
